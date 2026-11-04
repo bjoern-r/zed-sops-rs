@@ -1,0 +1,4 @@
+target/
+sops-ls/target/
+dist/
+.git/

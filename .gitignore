@@ -1,0 +1,3 @@
+/target
+/sops-ls/target
+*.wasm

@@ -1,0 +1,53 @@
+# Builds sops-ls for every platform Zed runs on and attaches the archives
+# to the GitHub release. Asset names must match src/lib.rs:
+#   sops-ls-<target>.tar.gz  (sops-ls-<target>.zip on Windows)
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: x86_64-unknown-linux-gnu,  os: ubuntu-22.04 }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04-arm }
+          - { target: x86_64-apple-darwin,       os: macos-latest }
+          - { target: aarch64-apple-darwin,      os: macos-latest }
+          - { target: x86_64-pc-windows-msvc,    os: windows-latest }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add ${{ matrix.target }}
+      - run: cargo build --release --target ${{ matrix.target }}
+        working-directory: sops-ls
+      - name: Package (unix)
+        if: runner.os != 'Windows'
+        run: tar -C sops-ls/target/${{ matrix.target }}/release -czf sops-ls-${{ matrix.target }}.tar.gz sops-ls
+      - name: Package (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path sops-ls/target/${{ matrix.target }}/release/sops-ls.exe -DestinationPath sops-ls-${{ matrix.target }}.zip
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: sops-ls-${{ matrix.target }}.*
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install sops and age
+        run: |
+          curl -sSLo /usr/local/bin/sops https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64
+          chmod +x /usr/local/bin/sops
+          curl -sSL https://github.com/FiloSottile/age/releases/download/v1.2.1/age-v1.2.1-linux-amd64.tar.gz | tar xz
+          sudo mv age/age age/age-keygen /usr/local/bin/
+      - run: cargo test && cargo build
+        working-directory: sops-ls
+      - run: sops-ls/tests/setup_fixtures.sh /tmp/e2e
+      - run: SOPS_AGE_KEY_FILE=/tmp/e2e/key.txt python3 sops-ls/tests/e2e.py sops-ls/target/debug/sops-ls /tmp/e2e
