@@ -3,14 +3,14 @@
 //! Binary resolution order:
 //!   1. `lsp.sops-ls.binary.path` in Zed settings
 //!   2. `sops-ls` on the worktree's $PATH
-//!   3. the latest GitHub release of `GITHUB_REPO` (downloaded once, cached)
+//!   3. the latest GitHub release of `https://github.com/bjoern-r/zed-sops-rs` (downloaded once, cached)
 
 use std::fs;
 use zed_extension_api::{self as zed, serde_json::json, settings::LspSettings, LanguageServerId, Result};
 
 const SERVER_NAME: &str = "sops-ls";
 /// Repository whose releases carry prebuilt `sops-ls` binaries.
-const GITHUB_REPO: &str = "OWNER/zed-sops";
+const GITHUB_REPO: &str = "bjoern-r/zed-sops-rs";
 
 struct SopsExtension {
     cached_binary_path: Option<String>,
