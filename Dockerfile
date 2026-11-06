@@ -32,7 +32,8 @@ COPY src ./src
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
     cargo build --release --target wasm32-wasip2 \
- && mkdir -p /out && cp target/wasm32-wasip2/release/zed_sops.wasm /out/extension.wasm
+ && mkdir -p /out && cp target/wasm32-wasip2/release/zed_sops.wasm /out/extension.wasm \
+ && cp extension.toml /out/extension.toml
 
 # ------------------------------------------------------------- tests
 FROM rust:${RUST_VERSION}-alpine AS test
@@ -58,3 +59,4 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 FROM scratch AS artifacts
 COPY --from=sops-ls /out/sops-ls /sops-ls
 COPY --from=extension /out/extension.wasm /extension.wasm
+COPY --from=extension /out/extension.toml /extension.toml
