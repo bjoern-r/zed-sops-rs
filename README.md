@@ -41,6 +41,8 @@ Until it is published in the Zed extension registry:
    Alternatively, set `GITHUB_REPO` in `src/lib.rs` to your fork, push a `v*` tag, and the release workflow builds binaries the extension downloads automatically.
 2. In Zed, run `zed: install dev extension` and select this directory. Zed compiles the extension to WASM itself; you need a Rust toolchain installed via `rustup`.
 
+No Rust toolchain? Build with Docker and run `./install.sh`, see [Installing without a Rust toolchain](#installing-without-a-rust-toolchain).
+
 ## Building with Docker
 
 Requires Docker with BuildKit (the default in current Docker).
@@ -52,9 +54,25 @@ docker buildx build --target artifacts --output type=local,dest=dist .
 # unit + end-to-end tests against real sops and age
 docker buildx build --target test .
 
-# install the server
-install -m 755 dist/sops-ls ~/.local/bin/sops-ls
 ```
+
+### Installing without a Rust toolchain
+
+After the `artifacts` build, `install.sh` installs everything locally without `rustup` or `cargo`:
+
+```sh
+./install.sh        # then restart Zed completely
+```
+
+It does three things:
+
+- copies `dist/sops-ls` to `~/.local/bin/sops-ls` (Linux only; on macOS install `sops-ls` from a release or set `lsp.sops-ls.binary.path`),
+- copies `dist/extension.toml` and `dist/extension.wasm` to Zed's `extensions/installed/sops/` folder, adding the `[lib] kind = "Rust"` section that Zed's own build step would normally write (without it Zed does not load the wasm),
+- deletes Zed's `extensions/index.json` cache so Zed re-scans the installed extensions on the next start.
+
+The extension then appears in the extension manager. Make sure `~/.local/bin` is on your `PATH`.
+
+Environment variables: `DIST` (artifact directory, default `dist`) and `BIN_DIR` (default `~/.local/bin`). Zed's data directory is detected from `XDG_DATA_HOME`/`FLATPAK_XDG_DATA_HOME` on Linux and `~/Library/Application Support/Zed` on macOS. To uninstall, remove `extensions/installed/sops/` from that directory and `~/.local/bin/sops-ls`.
 
 `sops-ls` is built against musl and statically linked, so it runs on any Linux distribution. For an ARM64 binary add `--platform linux/arm64` (emulated via QEMU, so expect a slow build).
 
